@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const MyApp());
@@ -34,6 +35,43 @@ class TrackerPageState extends State<TrackerPage> {
   List<String> groups = [];
   Map<String, List<String>> territories = {};
 
+  @override
+  void initState() {
+    super.initState();
+    _loadData(); // Load data when the app starts
+  }
+
+  // Load data from shared preferences
+  Future<void> _loadData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Load groups
+    setState(() {
+      groups = prefs.getStringList('groups') ?? [];
+    });
+
+    // Load territories
+    Map<String, List<String>> loadedTerritories = {};
+    for (String group in groups) {
+      loadedTerritories[group] = prefs.getStringList(group) ?? [];
+    }
+
+    setState(() {
+      territories =
+          loadedTerritories; // Update the state with loaded territories
+    });
+  }
+
+  // Save data to shared preferences
+// Save data to shared preferences
+  Future<void> _saveData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('groups', groups);
+    for (String group in groups) {
+      await prefs.setStringList(group, territories[group] ?? []);
+    }
+  }
+
   // Adds a new group with a number entered via dialog
   void _addGroup() async {
     String? groupNumber = await _showNumberInputDialog('Enter Group Number');
@@ -42,6 +80,7 @@ class TrackerPageState extends State<TrackerPage> {
         groups.add(groupNumber);
         territories[groupNumber] = [];
       });
+      await _saveData(); // Save changes to local storage
     }
   }
 
@@ -52,6 +91,7 @@ class TrackerPageState extends State<TrackerPage> {
       setState(() {
         territories[currentGroup]?.add(territoryName);
       });
+      await _saveData(); // Save changes to local storage
     }
   }
 
@@ -64,6 +104,7 @@ class TrackerPageState extends State<TrackerPage> {
         territories.remove(group);
         groups.remove(group);
       });
+      await _saveData(); // Save changes to local storage
     }
   }
 
@@ -75,6 +116,7 @@ class TrackerPageState extends State<TrackerPage> {
       setState(() {
         territories[currentGroup]?.remove(territory);
       });
+      await _saveData(); // Save changes to local storage
     }
   }
 
@@ -204,7 +246,8 @@ class TrackerPageState extends State<TrackerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(showingGroups ? 'Groups' : 'Territories of Group $currentGroup'),
+        title: Text(
+            showingGroups ? 'Groups' : 'Territories of Group $currentGroup'),
         leading: showingGroups
             ? null
             : IconButton(
@@ -325,7 +368,8 @@ class TerritoryDetailPage extends StatefulWidget {
   final String territory;
   final Function(String) onDelete;
 
-  const TerritoryDetailPage({super.key, required this.territory, required this.onDelete});
+  const TerritoryDetailPage(
+      {super.key, required this.territory, required this.onDelete});
 
   @override
   TerritoryDetailPageState createState() => TerritoryDetailPageState();
@@ -333,7 +377,11 @@ class TerritoryDetailPage extends StatefulWidget {
 
 class TerritoryDetailPageState extends State<TerritoryDetailPage> {
   bool isTracking = false;
-  List<String> savedTrails = ['Trail 1', 'Trail 2', 'Trail 3']; // State variable for saved trails
+  List<String> savedTrails = [
+    'Trail 1',
+    'Trail 2',
+    'Trail 3'
+  ]; // State variable for saved trails
 
   @override
   Widget build(BuildContext context) {
@@ -449,7 +497,8 @@ class TerritoryDetailPageState extends State<TerritoryDetailPage> {
 
   // Deletes a saved trail
   void _deleteSavedTrail(String trail) async {
-    bool confirmDelete = await _showConfirmationDialog('Delete Trail', 'Are you sure you want to delete $trail?');
+    bool confirmDelete = await _showConfirmationDialog(
+        'Delete Trail', 'Are you sure you want to delete $trail?');
     if (confirmDelete) {
       setState(() {
         savedTrails.remove(trail); // Remove the trail from the state variable
